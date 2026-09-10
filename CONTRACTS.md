@@ -7,7 +7,7 @@ This document defines the exact technical interfaces for the Chatbot project. Al
 
 ---
 
-## 1. The Data Contract (Jane ➔ Anna ➔ Vinicent)
+## 1. The Data Contract (Jane ➔ Anna ➔ Vincent)
 
 ### Step 1: Jane's Raw Dataset
 *   **Format:** CSV file
@@ -26,7 +26,7 @@ This document defines the exact technical interfaces for the Chatbot project. Al
 
 ---
 
-## 2. The ML Contract (Vinicent ➔ Lewis)
+## 2. The ML Contract (Vincent ➔ Lewis)
 
 ### Step 1: Model Artifacts
 *   **What Vinicent saves:** 
