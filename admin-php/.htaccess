@@ -1,0 +1,9 @@
+# Deny direct browser access to internal folders when this app is
+# dropped into an Apache-served site (e.g. https://www.mfanoboraafrica.com/admin/).
+<FilesMatch "\.(env|sql|log)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>

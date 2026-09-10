@@ -1,0 +1,17 @@
+<!--
+  Paste this just before </body> on the Mfano Bora Africa website
+  (WordPress: theme footer.php or a "Custom HTML" widget/footer script
+  area). It only sets configuration + loads the frontend team's widget
+  bundle — it does not implement any chat UI itself, since that's owned
+  by the frontend designer's separate build.
+-->
+<script>
+  window.MFANO_BORA_CHAT_CONFIG = {
+    apiBaseUrl: "https://api.mfanoboraafrica.com", // FastAPI service
+    position: "bottom-right",
+    greeting: "Hello! I'm the AI Assistant for Mfano Bora Africa. I'm here to assist with services, attachments, location, and much more. What would you like to know?",
+    brandColor: "#0f4c81"
+  };
+</script>
+<!-- Replace with the real widget bundle URL once the frontend team ships it -->
+<script src="https://cdn.mfanoboraafrica.com/chat-widget/widget.js" defer></script>
