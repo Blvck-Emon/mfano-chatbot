@@ -1,116 +1,151 @@
-# Mfano Bora Africa Chatbot — Refined System (PHP + FastAPI + MySQL)
+```markdown
+# Mfano Bora Africa Chatbot System
 
-This is the refined implementation of the Machine Learning-Based
-Web-Integrated Chatbot for Mfano Bora Africa, rebuilt on a lightweight,
-easily-hostable stack so it can sit directly alongside the existing
-Mfano Bora Africa PHP website:
+An automated, machine learning-driven web chatbot built for Mfano Bora Africa. The system combines a fast Python FastAPI backend for AI processing with a lightweight PHP admin panel for managing the knowledge base, viewing chat logs, and tracking system analytics.
 
-| Layer | Technology | Why |
-|---|---|---|
-| Knowledge base + logs | **MySQL 8** | Widely available on shared/VPS PHP hosting; FULLTEXT search gives relevance-ranked retrieval without a separate vector DB |
-| RAG / ML API | **FastAPI (Python)** | Fast, small, async-ready; the only piece that talks to the Groq LLM |
-| Admin dashboard | **PHP (no framework, no Composer required)** | Drops straight into the same server/hosting as the main website (`/admin`) |
-| Frontend chat widget | **Built separately by the frontend design lead** | This repo only ships the API contract + an embed snippet (`integration/`) — no widget code lives here |
-| Knowledge base seeding | **Python scraper → CSV → MySQL loader** | Crawls the whole live site once (or on a schedule) and refreshes the KB |
+---
 
-This intentionally departs from the earlier Node.js/MongoDB/Postgres+pgvector
-draft (see `docs/Machine_Learning-Based_Web-Integrated_Chatbot_for_Mfano_Bora_Africa_Implementation_plan.md`
-for that original plan) in favor of a lighter footprint that a small
-attachment team can install, run, and hand over without managing a
-container orchestrator.
+## How the System Works
 
-## Folder structure
+1. **User Query:** A user submits a question through the website chat widget.
+2. **Intent & Information Retrieval:** The FastAPI service evaluates the user query against the machine learning intent model (`/ml_model`) and searches the MySQL `knowledge_base` table using FULLTEXT indexing to find relevant answers.
+3. **AI Guardrail Response:** The retrieved context is passed to the Groq LLM API. The AI answers strictly using the provided context. If no matching information exists, it provides standard company contact details.
+4. **Logging & Information Gap Analysis:** User interactions, matching categories, and fallbacks are saved to MySQL. Unanswered queries are flagged in the `kb_gap_log` table so administrators can address missing knowledge base information.
+5. **Admin Management:** Administrators log into the PHP dashboard (`admin-php`) to update information, view metrics, manage users, and address unanswered questions.
+
+---
+
+## Repository & Git Instructions
+
+### 1. Clone the Repository
+Open your terminal or command prompt and run:
+```bash
+git clone [https://github.com/Blvck-Emon/mfano-chatbot.git](https://github.com/Blvck-Emon/mfano-chatbot.git)
+cd mfano-chatbot
 
 ```
-mfano-bora-chatbot-system/
-├── database/
-│   ├── schema.sql                 # MySQL DDL (run first)
-│   └── seed_faq.csv               # Hand-verified FAQ seed data
-├── scraper/
-│   ├── scrape_site.py             # Crawls mfanoboraafrica.com -> CSV
-│   └── requirements.txt
-├── csv-loader/
-│   ├── load_csv_to_mysql.py       # Loads any KB CSV into MySQL (dedup + clean)
-│   └── requirements.txt
-├── fastapi-service/               # ML/RAG backend (Python)
-│   ├── app/
-│   │   ├── main.py                # FastAPI app + CORS
-│   │   ├── config.py               # env-driven settings
-│   │   ├── db.py                   # MySQL connection pool
-│   │   ├── models.py               # Pydantic request/response schemas
-│   │   ├── routers/
-│   │   │   ├── chat.py            # POST /api/v1/chat/query
-│   │   │   ├── admin.py           # GET  /api/v1/admin/dashboard-stats
-│   │   │   └── health.py          # GET  /health
-│   │   └── services/
-│   │       ├── retrieval.py       # MySQL FULLTEXT search (Task 10)
-│   │       ├── llm.py             # Groq API call + guardrail prompt
-│   │       └── logger.py          # chat logging + gap tracking
-│   └── requirements.txt
-├── admin-php/                     # Admin dashboard (drop into the website)
-│   ├── config/                    # env.php, db.php (PDO), .env (you create)
-│   ├── includes/                  # auth.php (RBAC), functions.php
-│   ├── api/stats.php              # session-authed JSON stats
-│   ├── assets/css/style.css
-│   ├── login.php / logout.php
-│   ├── index.php                  # KPI dashboard + gap analysis
-│   ├── knowledge_base.php         # KB list/search
-│   ├── kb_edit.php / kb_save.php  # KB create/update/delete
-│   ├── chat_logs.php              # Task 16/17 access & evaluation view
-│   └── users.php                  # superadmin-only user management
-├── integration/
-│   ├── api-contract.md            # What the frontend widget team needs
-│   └── widget-embed-snippet.html  # Drop-in <script> for the website
-├── docs/
-│   ├── IMPLEMENTATION_PLAN.md     # 20-task -> component mapping + phased plan
-│   └── DEPLOYMENT.md              # Production hosting notes
-├── scripts/
-│   ├── install.sh                 # Linux/macOS setup
-│   └── install.ps1                # Windows PowerShell setup
-└── .env.example
+
+### 2. Switch to the Backend Branch
+
+```bash
+git checkout Backend
+
 ```
 
-## Quick start
+### 3. Merge the Backend Branch into Main
 
-**Linux/macOS:**
+To combine the verified backend code into the primary `main` branch:
+
+```bash
+git checkout main
+git pull origin main
+git merge Backend
+git push origin main
+
+```
+
+---
+
+## Running the System
+
+### Option A: Linux / macOS (.sh)
+
+Make the installer executable and run it:
+
 ```bash
 chmod +x scripts/install.sh
 ./scripts/install.sh
+
 ```
 
-**Windows (PowerShell):**
+To run the system components manually after installation:
+
+```bash
+# 1. Activate virtual environment & start FastAPI service
+source venv/bin/activate
+cd fastapi-service
+uvicorn app.main:app --reload --port 8000
+
+# 2. Run web scraper to gather live website data
+cd ../scraper
+python scrape_site.py --base-url [https://www.mfanoboraafrica.com](https://www.mfanoboraafrica.com)
+
+# 3. Load scraped data into MySQL
+cd ../csv-loader
+python load_csv_to_mysql.py --csv ../database/knowledge_base_scraped.csv --source-type scraped
+
+```
+
+### Option B: Windows (.ps1)
+
+Open PowerShell as Administrator and run:
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\install.ps1
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\install.ps1
+
 ```
 
-Both scripts verify/install Python, PHP, and MySQL client tools, create
-a Python virtualenv, install all Python dependencies, copy `.env.example`
-to `.env`, and optionally apply `database/schema.sql` + load the seed FAQ.
+To run the system components manually after installation:
 
-After install:
+```powershell
+# 1. Activate virtual environment & start FastAPI service
+.\venv\Scripts\Activate.ps1
+cd fastapi-service
+uvicorn app.main:app --reload --port 8000
 
-1. **Edit `.env`** with real `DB_PASSWORD` and `GROQ_API_KEY`.
-2. **Start the FastAPI service:**
-   ```bash
-   source venv/bin/activate          # venv\Scripts\Activate.ps1 on Windows
-   cd fastapi-service
-   uvicorn app.main:app --reload --port 8000
-   ```
-3. **Serve `admin-php/`** with any PHP 8.x + `pdo_mysql` webserver (Apache,
-   Nginx+PHP-FPM, or just `php -S 0.0.0.0:8080 -t admin-php` for local
-   testing). Log in at `/login.php` with `admin` / `ChangeMe!123` and
-   change the password immediately (add a real user via `users.php` and
-   deactivate/replace the seed account).
-4. **Scrape the live site into the knowledge base:**
-   ```bash
-   cd scraper
-   python scrape_site.py --base-url https://www.mfanoboraafrica.com --max-pages 200
-   cd ../csv-loader
-   python load_csv_to_mysql.py --csv ../database/knowledge_base_scraped.csv --source-type scraped
-   ```
-5. **Hand `integration/api-contract.md`** to the frontend designer building
-   the floating widget — it's the entire interface they need.
+# 2. Run web scraper
+cd ..\scraper
+python scrape_site.py --base-url [https://www.mfanoboraafrica.com](https://www.mfanoboraafrica.com)
 
-See `docs/IMPLEMENTATION_PLAN.md` for how each of the assignment's 20 tasks
-maps onto this codebase, and `docs/DEPLOYMENT.md` for production notes
-(reverse proxy, systemd unit, cron refresh, security checklist).
+# 3. Load scraped data into MySQL
+cd ..\csv-loader
+python load_csv_to_mysql.py --csv ..\database\knowledge_base_scraped.csv --source-type scraped
+
+```
+
+---
+
+## Team Integration & Execution Guide
+
+To combine everyone's work seamlessly into GitHub and deploy to the Mfano Bora website, each team member must follow these instructions:
+
+### 1. Jane (Training Dataset Lead)
+
+* Save your dataset to `data/raw_dataset.csv` with columns `intent` and `question`.
+* Push your changes to your feature branch and submit a Pull Request to `main`.
+
+### 2. Anna (Data Preprocessing Lead)
+
+* Pull `data/raw_dataset.csv`, clean the data, and split it using `random_state=42`.
+* Save `X_train.pkl`, `X_test.pkl`, `y_train.pkl`, and `y_test.pkl` into the `/data` directory.
+
+### 3. Vinicent (Machine Learning Developer)
+
+* Train the model using Anna's preprocessed data files.
+* Save `model.pkl`, `vectorizer.pkl`, and `label_encoder.pkl` into the `/ml_model` directory.
+* Create `/ml_model/predict.py` containing the `predict_intent(user_text: str)` function as defined in `CONTRACTS.md`.
+
+### 4. Lewis (Backend & Database Lead)
+
+* Ensure `fastapi-service/app/routers/chat.py` imports and calls `predict_intent` from `/ml_model/predict.py`.
+* Verify MySQL connection settings in `.env` and run `database/schema.sql`.
+
+### 5. Nyota (Frontend Lead)
+
+* Copy `integration/widget-embed-snippet.html` into the Mfano Bora website theme/footer.
+* Connect your chat widget UI to `POST http://localhost:8000/api/v1/chat/query` (or the live API domain).
+
+### 6. Hannah (QA & Testing Lead)
+
+* Execute cross-device and mobile browser tests.
+* Log test cases, fallback responses, and bug reports based on responses logged in `admin-php/chat_logs.php`.
+
+### 7. Peter (Project Lead)
+
+* Review and merge all feature branches into `main`.
+* Perform the final system end-to-end integration test before website deployment.
+
+```
+
+```

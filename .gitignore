@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 database/knowledge_base_scraped.csv
 .DS_Store
+secrets
+mfano-chatbot_compiled_system.txt
+compile_system.py
