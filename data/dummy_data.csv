@@ -1,0 +1,13 @@
+﻿question,intent
+Hello,greeting
+Hi there,greeting
+Good morning,greeting
+Hey,greeting
+How do I apply for attachment?,apply_attachment
+Where can I apply?,apply_attachment
+I want industrial attachment,apply_attachment
+What is the application procedure?,apply_attachment
+Where are you located?,location
+What is your physical address?,location
+Where is your office?,location
+How can I find you?,location
