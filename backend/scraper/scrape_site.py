@@ -6,8 +6,8 @@ Task-2/3 tool (Information Source Identification & Collection).
 Crawls the entire Mfano Bora Africa website (same-domain, breadth-first),
 extracts readable body text from each page, splits it into
 retrieval-sized chunks, and writes everything to a CSV that
-`csv-loader/load_csv_to_mysql.py` loads straight into the
-`knowledge_base` MySQL table.
+`csv-loader/load_csv_to_sqlite.py` loads straight into the
+`knowledge_base` SQLite table.
 
 Design goals (kept deliberately lightweight, no headless browser):
   * requests + BeautifulSoup only -> works on a cheap shared host / cron job
@@ -23,7 +23,7 @@ Usage:
                            --max-pages 200 --delay 1.0
 
 The resulting CSV columns match `database/schema.sql`'s `knowledge_base`
-table so it can be loaded as-is:
+table so it can be loaded as-is (the loader auto-detects this legacy layout):
     category,question,content_chunk,keywords,source_url,source_type
 """
 

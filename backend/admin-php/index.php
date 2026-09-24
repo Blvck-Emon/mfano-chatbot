@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/functions.php';
 $user = mb_require_login();
 $pdo = mb_db();
 
-// KPIs computed directly against MySQL (mirrors FastAPI's
+// KPIs computed directly against SQLite (mirrors FastAPI's
 // /api/v1/admin/dashboard-stats so the panel works even if the
 // Python service is temporarily down).
 $days = 7;
@@ -15,9 +15,9 @@ $stmt = $pdo->prepare(
             COUNT(*) AS messages,
             SUM(CASE WHEN was_fallback = 1 THEN 1 ELSE 0 END) AS fallbacks
      FROM chat_logs
-     WHERE sender_type = 'bot' AND timestamp >= (NOW() - INTERVAL ? DAY)"
+     WHERE sender_type = 'bot' AND timestamp >= datetime('now', ?)"
 );
-$stmt->execute([$days]);
+$stmt->execute(["-{$days} days"]);  // timestamps are stored in UTC, as is datetime('now')
 $stats = $stmt->fetch() ?: ['conversations' => 0, 'messages' => 0, 'fallbacks' => 0];
 
 $messages = (int) ($stats['messages'] ?? 0);

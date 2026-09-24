@@ -3,17 +3,18 @@ GET /api/v1/admin/dashboard-stats
 ===================================
 Aggregated KPIs for the PHP admin dashboard (Task 17/19: evaluation +
 reporting). The PHP admin app can either call this endpoint directly
-(server-side cURL) or query MySQL itself -- both are supported since
-admin-php ships its own PDO queries too. This endpoint is handy when
-the admin panel is hosted on a different box than the DB.
+(server-side cURL) or query the SQLite file itself -- both are supported
+since admin-php ships its own PDO queries too. This endpoint is handy when
+the admin panel is hosted on a different box than the DB file.
 
 NOTE: In production, protect this route (e.g. shared-secret header or
-place FastAPI + MySQL on a private network only reachable by the PHP
-backend) -- see docs/DEPLOYMENT.md.
+keep FastAPI on a private network only reachable by the PHP backend)
+-- see docs/DEPLOYMENT.md.
 """
 
+import sqlite3
+
 from fastapi import APIRouter, Depends, Query
-from mysql.connector.pooling import PooledMySQLConnection
 
 from app.db import get_connection
 from app.models import DashboardStats
@@ -22,17 +23,18 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
 @router.get("/dashboard-stats", response_model=DashboardStats)
-def dashboard_stats(days: int = Query(7, ge=1, le=90), conn: PooledMySQLConnection = Depends(get_connection)):
+def dashboard_stats(days: int = Query(7, ge=1, le=90), conn: sqlite3.Connection = Depends(get_connection)):
     cursor = conn.cursor()
 
+    # Timestamps are stored in UTC, and datetime('now', ...) is UTC too.
     cursor.execute(
         """
         SELECT COUNT(DISTINCT session_id), COUNT(*),
                SUM(CASE WHEN was_fallback = 1 THEN 1 ELSE 0 END)
         FROM chat_logs
-        WHERE sender_type = 'bot' AND timestamp >= (NOW() - INTERVAL %s DAY)
+        WHERE sender_type = 'bot' AND timestamp >= datetime('now', ?)
         """,
-        (days,),
+        (f"-{int(days)} days",),
     )
     total_conversations, total_messages, fallback_count = cursor.fetchone()
     total_messages = total_messages or 0

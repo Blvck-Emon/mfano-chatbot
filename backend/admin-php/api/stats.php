@@ -18,9 +18,9 @@ $stmt = $pdo->prepare(
             COUNT(*) AS messages,
             SUM(CASE WHEN was_fallback = 1 THEN 1 ELSE 0 END) AS fallbacks
      FROM chat_logs
-     WHERE sender_type = 'bot' AND timestamp >= (NOW() - INTERVAL ? DAY)"
+     WHERE sender_type = 'bot' AND timestamp >= datetime('now', ?)"
 );
-$stmt->execute([$days]);
+$stmt->execute(["-{$days} days"]);  // timestamps are stored in UTC, as is datetime('now')
 $row = $stmt->fetch() ?: ['conversations' => 0, 'messages' => 0, 'fallbacks' => 0];
 
 $messages = (int) $row['messages'];

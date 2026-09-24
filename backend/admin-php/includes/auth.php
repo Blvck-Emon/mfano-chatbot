@@ -74,7 +74,7 @@ function mb_attempt_login(string $username, string $password): bool
         'role'     => $row['role'],
     ];
 
-    $update = $pdo->prepare('UPDATE admin_users SET last_login_at = NOW() WHERE user_id = ?');
+    $update = $pdo->prepare('UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = ?');
     $update->execute([$row['user_id']]);
 
     return true;

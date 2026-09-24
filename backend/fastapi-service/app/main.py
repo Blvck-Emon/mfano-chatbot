@@ -16,7 +16,7 @@ from app.routers import chat, admin, health
 
 app = FastAPI(
     title="Mfano Bora Africa Chatbot API",
-    description="Lightweight RAG backend: MySQL knowledge base + Groq LLM",
+    description="Lightweight RAG backend: SQLite knowledge base + Groq LLM",
     version="1.0.0",
 )
 

@@ -9,12 +9,13 @@ $pdo = mb_db();
 $id = isset($_GET['id']) ? (int) $_GET['id'] : null;
 $entry = [
     'category_id'   => '',
-    'question'      => $_GET['prefill'] ?? '',
     'content_chunk' => '',
     'keywords'      => '',
     'source_url'    => '',
     'status'        => 'active',
 ];
+// Training questions, one per line (a gap-log "Add to KB" link pre-fills this).
+$questionsText = trim($_GET['prefill'] ?? '');
 
 if ($id) {
     $stmt = $pdo->prepare('SELECT * FROM knowledge_base WHERE doc_id = ?');
@@ -22,18 +23,32 @@ if ($id) {
     $found = $stmt->fetch();
     if ($found) {
         $entry = $found;
+        $qStmt = $pdo->prepare('SELECT question_text FROM kb_questions WHERE doc_id = ? ORDER BY question_id');
+        $qStmt->execute([$id]);
+        $questionsText = implode("\n", $qStmt->fetchAll(PDO::FETCH_COLUMN));
     }
 }
 
 $categories = $pdo->query('SELECT category_id, name FROM kb_categories ORDER BY name')->fetchAll();
 
 mb_render_header($id ? 'Edit Knowledge Base Entry' : 'Add Knowledge Base Entry', $user);
+
+if (isset($_GET['saved'])) {
+    mb_flash('Entry saved.');
+}
+$skippedQuestions = array_filter((array) ($_GET['skipped'] ?? []), 'is_string');
+if ($skippedQuestions) {
+    mb_flash(
+        'Not added, because they already belong to another entry: ' . implode(' | ', $skippedQuestions),
+        'error'
+    );
+}
 ?>
 
 <form method="post" action="kb_save.php" class="mb-form">
     <?php if ($id): ?><input type="hidden" name="doc_id" value="<?= (int) $id ?>"><?php endif; ?>
 
-    <label>Category
+    <label>Category (intent)
         <select name="category_id" required>
             <?php foreach ($categories as $c): ?>
                 <option value="<?= (int) $c['category_id'] ?>" <?= $entry['category_id'] == $c['category_id'] ? 'selected' : '' ?>>
@@ -43,8 +58,8 @@ mb_render_header($id ? 'Edit Knowledge Base Entry' : 'Add Knowledge Base Entry',
         </select>
     </label>
 
-    <label>Question (optional for scraped chunks)
-        <input type="text" name="question" maxlength="500" value="<?= h($entry['question']) ?>">
+    <label>Training questions (one per line; optional for scraped chunks)
+        <textarea name="questions" rows="6"><?= h($questionsText) ?></textarea>
     </label>
 
     <label>Answer / Content
@@ -71,7 +86,7 @@ mb_render_header($id ? 'Edit Knowledge Base Entry' : 'Add Knowledge Base Entry',
         <button type="submit">Save</button>
         <a class="mb-btn mb-btn-secondary" href="knowledge_base.php">Cancel</a>
         <?php if ($id): ?>
-            <button type="submit" form="delete-form" class="mb-btn mb-btn-danger" onclick="return confirm('Delete this entry?')">Delete</button>
+            <button type="submit" form="delete-form" class="mb-btn mb-btn-danger" onclick="return confirm('Delete this entry and its training questions?')">Delete</button>
         <?php endif; ?>
     </div>
 </form>

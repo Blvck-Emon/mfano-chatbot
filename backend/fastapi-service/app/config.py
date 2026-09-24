@@ -1,19 +1,32 @@
 """
 Central configuration for the FastAPI RAG service, loaded from
 environment variables (see ../.env.example). Uses plain os.environ
-(no extra dependency) to keep the service lightweight.
+(plus python-dotenv, already in requirements.txt, to read ../.env) to
+keep the service lightweight.
 """
 
 import os
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[2]  # project root (contains data/, database/, ...)
+
+try:  # make the documented ".env" file actually take effect
+    from dotenv import load_dotenv
+    load_dotenv(ROOT_DIR / ".env")
+except ImportError:
+    pass
+
+
+def _resolve_path(raw: str) -> str:
+    """Relative paths in DB_PATH are resolved from the project root."""
+    path = Path(raw)
+    return str(path if path.is_absolute() else ROOT_DIR / path)
 
 
 class Settings:
-    # --- MySQL ---
-    DB_HOST: str = os.environ.get("DB_HOST", "127.0.0.1")
-    DB_PORT: int = int(os.environ.get("DB_PORT", 3306))
-    DB_NAME: str = os.environ.get("DB_NAME", "mfano_bora_chatbot")
-    DB_USER: str = os.environ.get("DB_USER", "mfano_app")
-    DB_PASSWORD: str = os.environ.get("DB_PASSWORD", "")
+    # --- SQLite ---
+    DB_PATH: str = _resolve_path(os.environ.get("DB_PATH", "data/mfano_bora_chatbot.db"))
+    DB_BUSY_TIMEOUT_SECONDS: float = float(os.environ.get("DB_BUSY_TIMEOUT_SECONDS", 5))
 
     # --- Groq LLM ---
     GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")

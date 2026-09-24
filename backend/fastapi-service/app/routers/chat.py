@@ -2,17 +2,20 @@
 POST /api/v1/chat/query
 ========================
 The single endpoint the frontend floating widget calls. Implements the
-data-pipeline workflow from the requirements doc, adapted to MySQL:
+data-pipeline workflow from the requirements doc, adapted to SQLite:
 
     1. Receive user message (+ optional session_id)
-    2. FULLTEXT search `knowledge_base` for top-K relevant chunks
+    2. FTS5 search the training questions + knowledge_base for top-K chunks
     3. Send chunks + question to Groq LLM with a guardrail system prompt
-    4. Log both turns to MySQL (chat_sessions/chat_logs), track KB gaps
+       (a hit on the `fallback` intent skips the LLM and returns its
+       stored reply, flagged as a fallback)
+    4. Log both turns to SQLite (chat_sessions/chat_logs), track KB gaps
     5. Return the reply + which KB sources were used
 """
 
+import sqlite3
+
 from fastapi import APIRouter, Depends, Request
-from mysql.connector.pooling import PooledMySQLConnection
 
 from app.db import get_connection
 from app.models import ChatQueryRequest, ChatQueryResponse, SourceRef
@@ -22,7 +25,9 @@ router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
 
 @router.post("/query", response_model=ChatQueryResponse)
-def chat_query(payload: ChatQueryRequest, request: Request, conn: PooledMySQLConnection = Depends(get_connection)):
+def chat_query(payload: ChatQueryRequest, request: Request, conn: sqlite3.Connection = Depends(get_connection)):
+    # The connection is in autocommit mode (see app/db.py): every statement is
+    # committed immediately, so no write lock is held while waiting on the LLM.
     cursor = conn.cursor()
 
     client_ip = request.client.host if request.client else ""
@@ -33,11 +38,20 @@ def chat_query(payload: ChatQueryRequest, request: Request, conn: PooledMySQLCon
     chat_logger.log_message(cursor, session_id, "user", payload.message)
 
     # 2. Retrieve relevant KB chunks (Task 10).
-    kb_rows = retrieval.search_knowledge_base(cursor, payload.message)
+    hits = retrieval.search_knowledge_base(cursor, payload.message)
+    top = hits[0] if hits else None
 
-    # 3. Generate a grounded reply via Groq (or KB fallback if no LLM key set).
-    reply = llm.generate_reply(payload.message, kb_rows)
-    fallback = llm.is_fallback_reply(reply) or not kb_rows
+    # 3. Generate the reply.
+    if top and top.get("is_fallback"):
+        # The dataset's `fallback` intent: answer with its stored reply, no LLM call.
+        kb_rows = [top]
+        reply = top["content_chunk"]
+        fallback = True
+    else:
+        # Fallback-intent rows are never useful as grounding context for a real answer.
+        kb_rows = [row for row in hits if not row.get("is_fallback")]
+        reply = llm.generate_reply(payload.message, kb_rows)
+        fallback = llm.is_fallback_reply(reply) or not kb_rows
 
     # 4. Log the bot reply + track gaps for unanswered queries.
     top_doc_id = kb_rows[0]["doc_id"] if kb_rows else None
@@ -50,7 +64,6 @@ def chat_query(payload: ChatQueryRequest, request: Request, conn: PooledMySQLCon
     if fallback:
         chat_logger.log_gap(cursor, payload.message)
 
-    conn.commit()
     cursor.close()
 
     sources = [

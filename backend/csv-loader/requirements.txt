@@ -1,1 +1,3 @@
-mysql-connector-python==9.0.0
+# The loader uses only the standard library (sqlite3, csv).
+# python-dotenv is optional: it lets --db default to DB_PATH from ../.env
+python-dotenv==1.0.1
